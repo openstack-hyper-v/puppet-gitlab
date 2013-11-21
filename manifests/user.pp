@@ -88,7 +88,7 @@ define gitlab::group_user (
 ) {
   exec {"add-groupuser-${name}":
     command => "/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"insert into users_groups (group_id, user_id, group_access, created_at, updated_at, notification_level) values ((select id from namespaces where Lower(name) like Lower('${groupname}') limit 1), (select id from users where (email like '${user_email}') limit 1), ${access}, NOW(), NOW(), 3)\"",
-    unless  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select (select count(id) from namespaces where Lower(name) like Lower('${groupname}')) and (select count(id) from users where (email like '${user_email}'))\"`\"",
+    onlyif  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select (select count(id) from namespaces where Lower(name) like Lower('${groupname}')) and (select count(id) from users where (email like '${user_email}'))\"`\"",
   }
 }
 
@@ -100,7 +100,7 @@ define gitlab::block_user (
 ) {
     exec {"block-gitlab-user-${user_email}":
       command => "/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"update users set state='blocked' where email like '${user_email}'\"",
-      unless  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select count(id)=1 from users where (email like '${user_email}')\"`\"",
+      onlyif  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select count(id)=1 from users where (email like '${user_email}')\"`\"",
     }
 }
 
@@ -113,6 +113,6 @@ define gitlab::cripple_user (
     gitlab::block_user {"${user_email}": before => Exec["cripple-gitlab-user-${user_email}"]}
     exec {"cripple-gitlab-user-${user_email}":
       command => "/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"update users set encrypted_password=NULL where email like '${user_email}'\"",
-      unless  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select count(id)=1 from users where (email like '${user_email}')\"`\"",
+      onlyif  => "/bin/sh -c \"! return `/usr/bin/mysql -u${dbuser} -p${dbpwd} -D${dbname} -N -B -e\"select count(id)=1 from users where (email like '${user_email}')\"`\"",
     }
 }
